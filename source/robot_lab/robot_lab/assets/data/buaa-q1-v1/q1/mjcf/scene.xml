@@ -1,0 +1,116 @@
+<?xml version='1.0' encoding='utf-8'?>
+<mujoco model="buaa_q1_v1">
+  <compiler angle="radian" meshdir="../meshes" autolimits="true" />
+  <option timestep="0.001" iterations="50" solver="Newton" />
+  <asset>
+    <texture name="ground_tex" type="2d" builtin="checker" width="512" height="512" rgb1="0.32 0.34 0.36" rgb2="0.16 0.17 0.18" />
+    <material name="ground_mat" texture="ground_tex" texrepeat="40 40" reflectance="0.05" />
+    <material name="blue" rgba="0.1 0.4 0.8 1" />
+    <material name="white" rgba="0.9 0.9 0.9 1" />
+    <material name="black" rgba="0 0 0 1" />
+    <material name="green" rgba="0.25 0.8 0.4 1" />
+    <mesh name="base_link" file="base_link.STL" />
+    <mesh name="left1" file="left1.STL" />
+    <mesh name="left2" file="left2.STL" />
+    <mesh name="left3" file="left3.STL" />
+    <mesh name="left4" file="left4.STL" />
+    <mesh name="left5" file="left5.STL" />
+    <mesh name="right1" file="right1.STL" />
+    <mesh name="right2" file="right2.STL" />
+    <mesh name="right3" file="right3.STL" />
+    <mesh name="right4" file="right4.STL" />
+    <mesh name="right5" file="right5.STL" />
+    <mesh name="lidar" file="lidar.STL" />
+    <mesh name="realsense" file="realsense.STL" />
+  </asset>
+  <worldbody>
+    <light name="key_light" pos="2 -2 5" dir="-0.3 0.3 -1" directional="true" diffuse="0.85 0.85 0.85" specular="0.25 0.25 0.25" castshadow="true" />
+    <light name="fill_light" pos="-2 1 3" dir="0.4 -0.2 -1" directional="true" diffuse="0.35 0.38 0.42" specular="0.05 0.05 0.05" castshadow="false" />
+    <geom name="ground" type="plane" size="100 100 0.01" friction="1.0 0.8 0.5" material="ground_mat" contype="1" conaffinity="1" />
+    <body name="base_link" pos="0 0 0.45">
+      <freejoint name="floating_base" />
+      <inertial mass="6.40085835" pos="-0.01158260 0.00000597 0.14631222" fullinertia="0.04967319 0.13479794 0.11744051 -0.00000038 -0.01935371 -0.00002794" />
+      <geom type="mesh" mesh="base_link" contype="0" conaffinity="0" material="blue" />
+      <site name="base_imu" pos="0 0 0" size="0.005" />
+      <body name="hip_yaw_l" pos="0 0.055 0.0861">
+        <inertial mass="0.924966309836361" pos="-0.000221171408633571 0.000835436588466555 0.0255560756676425" fullinertia="0.00251932 0.00224984 0.00059590 0.00009795 0.00000053 0.00002942" />
+        <geom type="mesh" mesh="left1" contype="0" conaffinity="0" pos="0 0 0" material="white" />
+        <joint name="hip_yaw_l" type="hinge" axis="0 0 1" limited="true" range="-0.4537856055 0" frictionloss="0.01" />
+        <body name="hip_roll_l" pos="0.021165 0.063656 0.0021">
+          <inertial mass="0.336643013680241" pos="-0.0274911987178704 0.0197664676440548 -0.00512348096800992" fullinertia="0.00051358 0.00027085 0.00055789 0.00018525 -0.00003652 0.00006460" />
+          <geom type="mesh" mesh="left2" contype="0" conaffinity="0" pos="0 0 0" material="black" />
+          <joint name="hip_roll_l" type="hinge" axis="0.95106 0.30902 0" limited="true" range="0 0.3714060648" frictionloss="0.07" />
+          <body name="hip_pitch_l" pos="-0.040106 0.045768 -0.010506">
+            <inertial mass="1.08615270" pos="0.07571300 0.02157796 0.00060929" fullinertia="0.00190228 0.00732076 0.00717915 -0.00195647 0.00007908 -0.00013307" />
+            <geom type="mesh" mesh="left3" contype="0" conaffinity="0" pos="0 0 0" material="white" />
+            <joint name="hip_pitch_l" type="hinge" axis="-0.3037 0.9347 -0.18464" limited="true" range="0 3.094395102" frictionloss="0.03" />
+            <body name="knee_pitch_l" pos="0.15027 0.048825 0">
+              <inertial mass="0.96552306" pos="-0.01759815 0.00753399 0.08328469" fullinertia="0.00591962 0.00633182 0.00141719 0.00003208 0.00106872 -0.00059524" />
+              <geom type="mesh" mesh="left4" contype="0" conaffinity="0" pos="0 0 0" material="black" />
+              <joint name="knee_pitch_l" type="hinge" axis="0.3037 -0.9347 0.18464" limited="true" range="-3.490658504 0" frictionloss="0.01" />
+              <body name="ankle_pitch_l" pos="-0.034971 0.018845 0.15292">
+                <inertial mass="1.15884521" pos="0.06647366 0.02592624 0.02560674" fullinertia="0.0041618 0.00566982 0.00439805 -0.00065593 -0.00005476 -0.00035079" />
+                <geom type="mesh" mesh="left5" contype="0" conaffinity="0" pos="0 0 0" material="white" />
+                <geom type="mesh" mesh="left5" group="3" rgba="0.2 0.2 0.2 0" pos="0 0 0" />
+                <joint name="ankle_pitch_l" type="hinge" axis="-0.3037 0.9347 -0.18464" limited="true" range="-2.617993878 0" frictionloss="0.01" />
+              </body>
+            </body>
+          </body>
+        </body>
+      </body>
+      <body name="hip_yaw_r" pos="0 -0.055 0.0861">
+        <inertial mass="0.92496577" pos="0.00091922 -0.00120453 0.02555592" fullinertia="0.00251891 0.00225164 0.00059728 -0.00009831 0.00002528 -0.00003738" />
+        <geom type="mesh" mesh="right1" contype="0" conaffinity="0" pos="0 0 0" material="white" />
+        <joint name="hip_yaw_r" type="hinge" axis="0 0 1" limited="true" range="0 0.4537856055" />
+        <body name="hip_roll_r" pos="0.023067 -0.064274 0.0021">
+          <inertial mass="0.33664269" pos="-0.0274911769591385 -0.0197664945674842 -0.00512347401957491" fullinertia="0.00051357 0.00027085 0.00055789 -0.00018525 -0.00003652 -0.00006460" />
+          <geom type="mesh" mesh="right2" contype="0" conaffinity="0" pos="0 0 0" material="black" />
+          <joint name="hip_roll_r" type="hinge" axis="0.95106 -0.30902 0" limited="true" range="-0.3714060648 0" frictionloss="0.07" />
+          <body name="hip_pitch_r" pos="-0.040015 -0.045488 -0.01045">
+            <inertial mass="1.08615270" pos="0.075622041595536 -0.0218579165663489 0.000551361994713465" fullinertia="0.00190228 0.00732078 0.00717914 0.00195646 0.00007916 0.00013303" />
+            <geom type="mesh" mesh="right3" contype="0" conaffinity="0" pos="0 0 0" material="white" />
+            <joint name="hip_pitch_r" type="hinge" axis="-0.3037 -0.9347 -0.18464" limited="true" range="-3.104395102 0" frictionloss="0.03" />
+            <body name="knee_pitch_r" pos="0.15027 -0.048825 0">
+              <inertial mass="0.96552304" pos="-0.0176878976892493 -0.00781487379967322 0.0832294573868453" fullinertia="0.00591971 0.00633182 0.00141715 -0.00003206 0.00106860 0.00059529" />
+              <geom type="mesh" mesh="right4" contype="0" conaffinity="0" pos="0 0 0" material="black" />
+              <joint name="knee_pitch_r" type="hinge" axis="0.3037 0.9347 0.18464" limited="true" range="0 3.490658504" frictionloss="0.01" />
+              <body name="ankle_pitch_r" pos="-0.035063 -0.019126 0.15287">
+                <inertial mass="1.15884521" pos="0.06647359 -0.02592625 0.02560691" fullinertia="0.0041618 0.00566982 0.00439804 0.00065593 -0.00005477 0.0003508" />
+                <geom type="mesh" mesh="right5" contype="0" conaffinity="0" pos="0 0 0" material="white" />
+                <geom type="mesh" mesh="right5" group="3" rgba="0.2 0.2 0.2 0" pos="0 0 0" />
+                <joint name="ankle_pitch_r" type="hinge" axis="-0.3037 -0.9347 -0.18464" limited="true" range="0 2.617993878" frictionloss="0.01" />
+              </body>
+            </body>
+          </body>
+        </body>
+      </body>
+      <body name="lidar" pos="0.154 0 0.294">
+        <inertial mass="0.308400019417121" pos="0.0046418382681748 5.43438209894845E-06 0.0595974876053534" fullinertia="0.00020460 0.00022004 0.00015518 0.00000003 -0.00001318 0.0" />
+        <geom type="mesh" mesh="lidar" contype="0" conaffinity="0" pos="0 0 0" material="green" />
+      </body>
+      <body name="imu_in_torso" pos="0.207 0 0.17525">
+        <inertial mass="0.11729996" pos="-0.01250113 0.00004432 0.00000228" fullinertia="0.00014633 0.00001399 0.00014382 -0.00000007 0.0 0.00000001" />
+        <geom type="mesh" mesh="realsense" contype="0" conaffinity="0" pos="0 0 0" material="black" />
+      </body>
+    </body>
+  </worldbody>
+  <actuator>
+    <motor name="hip_yaw_l_motor" joint="hip_yaw_l" gear="1" ctrlrange="-20 20" ctrllimited="true" />
+    <motor name="hip_roll_l_motor" joint="hip_roll_l" gear="1" ctrlrange="-20 20" ctrllimited="true" />
+    <motor name="hip_pitch_l_motor" joint="hip_pitch_l" gear="1" ctrlrange="-20 20" ctrllimited="true" />
+    <motor name="knee_pitch_l_motor" joint="knee_pitch_l" gear="1" ctrlrange="-20 20" ctrllimited="true" />
+    <motor name="ankle_pitch_l_motor" joint="ankle_pitch_l" gear="1" ctrlrange="-20 20" ctrllimited="true" />
+    <motor name="hip_yaw_r_motor" joint="hip_yaw_r" gear="1" ctrlrange="-20 20" ctrllimited="true" />
+    <motor name="hip_roll_r_motor" joint="hip_roll_r" gear="1" ctrlrange="-20 20" ctrllimited="true" />
+    <motor name="hip_pitch_r_motor" joint="hip_pitch_r" gear="1" ctrlrange="-20 20" ctrllimited="true" />
+    <motor name="knee_pitch_r_motor" joint="knee_pitch_r" gear="1" ctrlrange="-20 20" ctrllimited="true" />
+    <motor name="ankle_pitch_r_motor" joint="ankle_pitch_r" gear="1" ctrlrange="-20 20" ctrllimited="true" />
+  </actuator>
+  <sensor>
+    <framequat name="base_quat" objtype="body" objname="base_link" />
+    <gyro name="body_gyro" site="base_imu" />
+  </sensor>
+  <keyframe>
+    <key name="default_pos" qpos="0 0 0.45 1 0 0 0 -0.36 0.18 2.35 -0.33 -0.77 0.36 -0.18 -2.35 0.33 0.77" />
+  </keyframe>
+</mujoco>

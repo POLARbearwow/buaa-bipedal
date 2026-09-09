@@ -1,0 +1,69 @@
+# Python
+__pycache__/
+*.py[cod]
+*.so
+*.egg-info/
+.python-version
+.venv/
+venv/
+env/
+build/
+dist/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Isaac Lab / Isaac Sim generated files
+# Keep only experiment parameters and exported ONNX policies from logs.
+logs/**
+!logs/**/
+!logs/**/params/
+!logs/**/params/**
+!logs/**/exported/
+!logs/**/exported/*.onnx
+outputs/
+*.kit
+*.usd.~lock*
+*.usda.~lock*
+*.usdskel.~lock*
+*.log
+omniverse.log
+carb.log
+*.crash
+MUJOCO_LOG.TXT
+
+# Repository history and nested repository metadata
+.history/
+**/.git/
+
+# Nested projects are intentionally excluded from this combined repository.
+M1-HIMLoco/
+RoboTamer4Qmini/
+
+# Model checkpoints and experiment logs
+*.pt
+*.pth
+*.pkl
+*.ckpt
+*.onnx
+*.tfevents.*
+
+# Restore only exported ONNX policies selected above.
+!logs/**/exported/*.onnx
+
+# Training checkpoints and experiment artifacts
+checkpoints/
+artifacts/
+wandb/
+tensorboard/
+events.out.tfevents.*
+
+# Editors and OS files
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
