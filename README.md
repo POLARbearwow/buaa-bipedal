@@ -21,7 +21,7 @@ modules to be available in that environment.
 ## Train
 
 ```bash
-python scripts/train.py --task RobotLab-Isaac-Velocity-Flat-Q1-v0 --headless
+python scripts/train.py --task buaa-q1-flat --headless
 ```
 
 Useful overrides include `--num_envs`, `--max_iterations`, `--seed`, and
@@ -30,20 +30,18 @@ Useful overrides include `--num_envs`, `--max_iterations`, `--seed`, and
 ## Play a checkpoint
 
 ```bash
-python scripts/play.py --task RobotLab-Isaac-Velocity-Flat-Q1-v0 \
+python scripts/play.py --task buaa-q1-flat \
   --checkpoint logs/rsl_rl/q1_flat/<run>/model_*.pt
 ```
 
 Replace the checkpoint path with the model produced by training. Logs are
 written under `logs/rsl_rl/q1_flat`.
 
-The BUAA Q1-v1 model is available as a separate task. Its initial joint pose
-is currently all zeros:
+The BUAA Q1-v1 model uses the `buaa-q1-flat` task. Its initial joint pose is
+currently all zeros:
 
 ```bash
 python scripts/train.py --task buaa-q1-flat --headless
 ```
 
-The equivalent full task id is
-`RobotLab-Isaac-Velocity-Flat-Buaa-Q1-v0`; its logs are written under
-`logs/rsl_rl/buaa_q1_flat`.
+Logs are written under `logs/rsl_rl/buaa_q1_flat`.
