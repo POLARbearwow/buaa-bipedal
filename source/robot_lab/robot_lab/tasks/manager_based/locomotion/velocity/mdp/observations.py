@@ -33,3 +33,17 @@ def phase(env: ManagerBasedRLEnv, cycle_time: float) -> torch.Tensor:
     phase = env.episode_length_buf[:, None] * env.step_dt / cycle_time
     phase_tensor = torch.cat([torch.sin(2 * torch.pi * phase), torch.cos(2 * torch.pi * phase)], dim=-1)
     return phase_tensor
+
+
+def biped_phase(env: ManagerBasedRLEnv, cycle_time: float, command_name: str = "base_velocity") -> torch.Tensor:
+    """Return sin/cos phase for two feet with a half-cycle phase offset."""
+    if not hasattr(env, "episode_length_buf") or env.episode_length_buf is None:
+        env.episode_length_buf = torch.zeros(env.num_envs, device=env.device, dtype=torch.long)
+    phase = env.episode_length_buf[:, None] * env.step_dt / cycle_time
+    phase_left = 2 * torch.pi * phase
+    phase_right = phase_left + torch.pi
+    phase_tensor = torch.cat(
+        [torch.sin(phase_left), torch.cos(phase_left), torch.sin(phase_right), torch.cos(phase_right)], dim=-1
+    )
+    moving = (torch.linalg.norm(env.command_manager.get_command(command_name), dim=1, keepdim=True) > 0.1).float()
+    return phase_tensor * moving

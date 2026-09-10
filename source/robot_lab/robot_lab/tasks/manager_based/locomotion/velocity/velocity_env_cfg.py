@@ -106,7 +106,7 @@ class CommandsCfg:
     base_velocity = mdp.UniformThresholdVelocityCommandCfg(
         asset_name="robot",
         resampling_time_range=(10.0, 10.0),
-        rel_standing_envs=0.02,
+        rel_standing_envs=0.10,
         rel_heading_envs=1.0,
         heading_command=True,
         heading_control_stiffness=0.5,
@@ -178,6 +178,14 @@ class ObservationsCfg:
             clip=(-100.0, 100.0),
             scale=1.0,
         )
+        # Sin/cos phase of a fixed gait cycle. Keep this after last_action so
+        # the added policy inputs have a stable, explicit location.
+        phase = ObsTerm(
+            func=mdp.biped_phase,
+            params={"cycle_time": 0.667, "command_name": "base_velocity"},
+            clip=(-1.0, 1.0),
+            scale=1.0,
+        )
         height_scan = ObsTerm(
             func=mdp.height_scan,
             params={"sensor_cfg": SceneEntityCfg("height_scanner")},
@@ -231,6 +239,12 @@ class ObservationsCfg:
         actions = ObsTerm(
             func=mdp.last_action,
             clip=(-100.0, 100.0),
+            scale=1.0,
+        )
+        phase = ObsTerm(
+            func=mdp.biped_phase,
+            params={"cycle_time": 0.667, "command_name": "base_velocity"},
+            clip=(-1.0, 1.0),
             scale=1.0,
         )
         height_scan = ObsTerm(
@@ -411,6 +425,11 @@ class RewardsCfg:
     joint_torques_l2 = RewTerm(
         func=mdp.joint_torques_l2, weight=0.0, params={"asset_cfg": SceneEntityCfg("robot", joint_names=".*")}
     )
+    joint_torques_above_threshold = RewTerm(
+        func=mdp.joint_torques_above_threshold,
+        weight=0.0,
+        params={"asset_cfg": SceneEntityCfg("robot", joint_names=".*"), "threshold_ratio": 0.7},
+    )
     joint_vel_l2 = RewTerm(
         func=mdp.joint_vel_l2, weight=0.0, params={"asset_cfg": SceneEntityCfg("robot", joint_names=".*")}
     )
@@ -577,6 +596,18 @@ class RewardsCfg:
         },
     )
 
+    # Gait rewards: keep these terms together for tuning.
+    phase_conditioned_contact = RewTerm(
+        func=mdp.phase_conditioned_contact,
+        weight=0.0,
+        params={
+            "cycle_time": 0.667,
+            "command_name": "base_velocity",
+            "sensor_cfg": SceneEntityCfg("contact_forces", body_names=""),
+        },
+    )
+
+    # Legacy reward retained for reference; keep disabled when using phase gait.
     feet_contact = RewTerm(
         func=mdp.feet_contact,
         weight=0.0,
@@ -614,10 +645,11 @@ class RewardsCfg:
     )
 
     feet_height = RewTerm(
-        func=mdp.feet_height,
+        func=mdp.feet_height_biped,
         weight=0.0,
         params={
             "asset_cfg": SceneEntityCfg("robot", body_names=""),
+            "sensor_cfg": SceneEntityCfg("contact_forces", body_names=""),
             "tanh_mult": 2.0,
             "target_height": 0.05,
             "command_name": "base_velocity",

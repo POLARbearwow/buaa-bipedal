@@ -101,6 +101,8 @@ class DeployBuaaQ1:
         self.soft_joint_pos_limit_factor = float(cfg.get("soft_joint_pos_limit_factor", 0.90))
         self.joint_vel_scale = float(cfg["joint_vel_scale"])
         self.ang_vel_scale = float(cfg["ang_vel_scale"])
+        self.gait_cycle_time = float(cfg.get("gait_cycle_time", 0.667))
+        self.phase = 0.0
         self.cmd = np.zeros(3, dtype=np.float32)
         self.last_action = np.zeros(10, dtype=np.float32)
         self.obs = np.zeros(57, dtype=np.float32)
@@ -169,6 +171,7 @@ class DeployBuaaQ1:
         mujoco.mj_forward(self.model, self.data)
         self.cmd.fill(0)
         self.last_action.fill(0)
+        self.phase = 0.0
 
     def _read_state(self) -> None:
         self.qpos[:] = self.data.qpos[self.action_qpos_ids]
@@ -193,6 +196,7 @@ class DeployBuaaQ1:
         self.obs[9:19] = self.obs_qpos - self.obs_default_angles
         self.obs[19:29] = self.obs_qvel * self.joint_vel_scale
         self.obs[29:39] = self.last_action
+        phase_angle = 2.0 * np.pi * self.phase / self.gait_cycle_time
         # Isaac Lab's flat task has 39 policy values when base_lin_vel and scan
         # are disabled. Keep a fixed 57-vector for exported checkpoints that
         # retain the base-linear-velocity slot; zero padding is explicit.
@@ -201,6 +205,16 @@ class DeployBuaaQ1:
         else:
             self.policy_input = np.zeros(self.input_dim, dtype=np.float32)
             self.policy_input[:39] = self.obs[:39]
+            if self.input_dim >= 43:
+                self.policy_input[39:43] = (
+                    np.sin(phase_angle), np.cos(phase_angle),
+                    np.sin(phase_angle + np.pi), np.cos(phase_angle + np.pi),
+                )
+            elif self.input_dim >= 41:
+                self.policy_input[39:41] = (np.sin(phase_angle), np.cos(phase_angle))
+
+    def _advance_phase(self) -> None:
+        self.phase = (self.phase + self.control_decimation * float(self.cfg["simulation_dt"])) % self.gait_cycle_time
 
     def _infer_action(self) -> None:
         output = self.session.run([self.output_name], {self.input_name: self.policy_input[None, : self.input_dim]})[0]
@@ -252,13 +266,20 @@ class DeployBuaaQ1:
                 self.step_count += 1
                 if self.step_count % self.control_decimation == 0:
                     self._read_state()
+                    self._advance_phase()
                     # At this point qpos and actuator_force correspond to the
                     # action applied during the preceding control interval.
                     self._print_debug()
                     self._make_observation()
                     self._infer_action()
                     self.control_count += 1
-                viewer.sync()
+                # Isaac Lab renders at ``sim.render_interval`` (one render per
+                # policy action), while physics still advances every 1 ms.
+                # Syncing the passive viewer at 1 kHz makes the Python loop
+                # spend most of its time rendering and can look like slow
+                # motion when it falls behind real time.
+                if self.step_count % self.control_decimation == 0:
+                    viewer.sync()
                 delay = self.model.opt.timestep - (time.time() - tick)
                 if delay > 0:
                     time.sleep(delay)

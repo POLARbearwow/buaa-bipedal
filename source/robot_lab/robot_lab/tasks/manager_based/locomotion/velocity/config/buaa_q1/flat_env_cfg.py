@@ -115,6 +115,9 @@ class BuaaQ1FlatEnvCfg(LocomotionVelocityRoughEnvCfg):
         }
 
         self.rewards.is_terminated.weight = -200.0
+        # Penalize vertical base motion (body-frame z velocity) to discourage
+        # bouncing while preserving the commanded horizontal velocity task.
+        self.rewards.lin_vel_z_l2.weight = -1.0
         self.rewards.ang_vel_xy_l2.weight = -0.1
         self.rewards.flat_orientation_l2.weight = -0.2
         self.rewards.base_height_l2.params["asset_cfg"].body_names = [self.base_link_name]
@@ -123,8 +126,11 @@ class BuaaQ1FlatEnvCfg(LocomotionVelocityRoughEnvCfg):
         self.rewards.base_height_tracking.params["asset_cfg"].body_names = [self.base_link_name]
         self.rewards.base_orientation_tracking.weight = 1.5
         self.rewards.base_orientation_tracking.params["asset_cfg"].body_names = [self.base_link_name]
-        self.rewards.joint_torques_l2.weight = -1.5e-3
+        self.rewards.joint_torques_l2.weight = -1.5e-4
         self.rewards.joint_torques_l2.params["asset_cfg"].joint_names = self.joint_names
+        self.rewards.joint_torques_above_threshold.weight = -0.1
+        self.rewards.joint_torques_above_threshold.params["asset_cfg"].joint_names = self.joint_names
+        self.rewards.joint_torques_above_threshold.params["threshold_ratio"] = 0.7
         self.rewards.joint_acc_l2.weight = -1.25e-7
         self.rewards.joint_acc_l2.params["asset_cfg"].joint_names = self.joint_names
         self.rewards.joint_pos_limits.weight = -0.5
@@ -138,19 +144,24 @@ class BuaaQ1FlatEnvCfg(LocomotionVelocityRoughEnvCfg):
         self.rewards.track_lin_vel_xy_exp.func = mdp.track_lin_vel_xy_yaw_frame_exp
         self.rewards.track_ang_vel_z_exp.weight = 2.0
         self.rewards.track_ang_vel_z_exp.func = mdp.track_ang_vel_z_world_exp
-        self.rewards.feet_air_time.weight = 1.0
-        self.rewards.feet_air_time.func = mdp.feet_air_time_positive_biped
-        self.rewards.feet_air_time.params["threshold"] = 0.4
-        self.rewards.feet_air_time.params["sensor_cfg"].body_names = [self.foot_link_name]
+        # Gait rewards (tune this block together).
+        # self.rewards.feet_air_time.weight = 1.0  # legacy reward disabled
+        self.rewards.phase_conditioned_contact.weight = 1.0
+        self.rewards.phase_conditioned_contact.params["cycle_time"] = 0.667
+        self.rewards.phase_conditioned_contact.params["sensor_cfg"].body_names = [self.foot_link_name]
+        self.rewards.feet_height.weight = -1.0
+        self.rewards.feet_height.params["asset_cfg"].body_names = [self.foot_link_name]
+        self.rewards.feet_height.params["sensor_cfg"].body_names = [self.foot_link_name]
+        self.rewards.feet_height.params["target_height"] = 0.10
         self.rewards.feet_slide.weight = -0.2
         self.rewards.feet_slide.params["sensor_cfg"].body_names = [self.foot_link_name]
         self.rewards.feet_slide.params["asset_cfg"].body_names = [self.foot_link_name]
         self.rewards.upward.weight = 1.0
         self.terminations.illegal_contact.params["sensor_cfg"].body_names = [self.base_link_name]
         self.commands.base_velocity.heading_command = False
-        self.commands.base_velocity.ranges.lin_vel_x = (-0.3, 0.7)
+        self.commands.base_velocity.ranges.lin_vel_x = (-0.7, 0.7)
         self.commands.base_velocity.ranges.lin_vel_y = (0.0, 0.0)
-        self.commands.base_velocity.ranges.ang_vel_z = (-1.0, 1.0)
+        self.commands.base_velocity.ranges.ang_vel_z = (-0.5, 0.5)
 
         if self.__class__.__name__ == "BuaaQ1FlatEnvCfg":
             self.disable_zero_weight_rewards()

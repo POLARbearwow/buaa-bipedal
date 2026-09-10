@@ -90,6 +90,24 @@ def joint_power(env: ManagerBasedRLEnv, asset_cfg: SceneEntityCfg = SceneEntityC
     return reward
 
 
+def joint_torques_above_threshold(
+    env: ManagerBasedRLEnv,
+    threshold_ratio: float,
+    asset_cfg: SceneEntityCfg = SceneEntityCfg("robot"),
+) -> torch.Tensor:
+    """Penalize only the portion of applied torque above a ratio of its limit."""
+    asset: Articulation = env.scene[asset_cfg.name]
+    torque = torch.abs(asset.data.applied_torque[:, asset_cfg.joint_ids])
+    effort_limits = asset.data.joint_effort_limits
+    if effort_limits.ndim == 1:
+        effort_limits = effort_limits[asset_cfg.joint_ids].unsqueeze(0)
+    else:
+        effort_limits = effort_limits[:, asset_cfg.joint_ids]
+    threshold = torch.clamp(effort_limits * threshold_ratio, min=1e-6)
+    excess = torch.clamp(torque - threshold, min=0.0) / threshold
+    return torch.sum(torch.square(excess), dim=1)
+
+
 def stand_still(
     env: ManagerBasedRLEnv,
     command_name: str,
@@ -425,6 +443,27 @@ def feet_contact_without_cmd(env: ManagerBasedRLEnv, command_name: str, sensor_c
     return reward
 
 
+def phase_conditioned_contact(
+    env: ManagerBasedRLEnv,
+    cycle_time: float,
+    command_name: str,
+    sensor_cfg: SceneEntityCfg,
+) -> torch.Tensor:
+    """Reward alternating left/right contact according to the gait phase."""
+    contact_sensor: ContactSensor = env.scene.sensors[sensor_cfg.name]
+    contact = contact_sensor.data.current_contact_time[:, sensor_cfg.body_ids] > 0.0
+    if contact.shape[1] != 2:
+        raise ValueError("phase_conditioned_contact requires exactly two foot bodies")
+    phase = (env.episode_length_buf.float() * env.step_dt / cycle_time) % 1.0
+    left_should_contact = phase < 0.5
+    desired = torch.stack((left_should_contact, ~left_should_contact), dim=1)
+    reward = torch.mean((contact == desired).float(), dim=1)
+    # Disable gait shaping for standing commands.
+    reward *= torch.linalg.norm(env.command_manager.get_command(command_name), dim=1) > 0.1
+    reward *= torch.clamp(-env.scene["robot"].data.projected_gravity_b[:, 2], 0, 0.7) / 0.7
+    return reward
+
+
 def feet_stumble(env: ManagerBasedRLEnv, sensor_cfg: SceneEntityCfg) -> torch.Tensor:
     # extract the used quantities (to enable type-hinting)
     contact_sensor: ContactSensor = env.scene.sensors[sensor_cfg.name]
@@ -519,6 +558,28 @@ def feet_height(
     )
     reward = torch.sum(foot_z_target_error * foot_velocity_tanh, dim=1)
     # no reward for zero command
+    reward *= torch.linalg.norm(env.command_manager.get_command(command_name), dim=1) > 0.1
+    reward *= torch.clamp(-env.scene["robot"].data.projected_gravity_b[:, 2], 0, 0.7) / 0.7
+    return reward
+
+
+def feet_height_biped(
+    env: ManagerBasedRLEnv,
+    command_name: str,
+    asset_cfg: SceneEntityCfg,
+    sensor_cfg: SceneEntityCfg,
+    target_height: float,
+    tanh_mult: float,
+) -> torch.Tensor:
+    """Penalize swing-foot height error while ignoring stance feet."""
+    asset: RigidObject = env.scene[asset_cfg.name]
+    contact_sensor: ContactSensor = env.scene.sensors[sensor_cfg.name]
+    in_contact = contact_sensor.data.current_contact_time[:, sensor_cfg.body_ids] > 0.0
+    foot_z_error = torch.square(asset.data.body_pos_w[:, asset_cfg.body_ids, 2] - target_height)
+    foot_speed = torch.tanh(
+        tanh_mult * torch.linalg.norm(asset.data.body_lin_vel_w[:, asset_cfg.body_ids, :2], dim=2)
+    )
+    reward = torch.sum(foot_z_error * foot_speed * (~in_contact), dim=1)
     reward *= torch.linalg.norm(env.command_manager.get_command(command_name), dim=1) > 0.1
     reward *= torch.clamp(-env.scene["robot"].data.projected_gravity_b[:, 2], 0, 0.7) / 0.7
     return reward
