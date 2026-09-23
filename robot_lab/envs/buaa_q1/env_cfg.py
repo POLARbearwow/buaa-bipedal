@@ -144,7 +144,7 @@ class BuaaQ1FlatEnvCfg(LocomotionVelocityRoughEnvCfg):
         self.rewards.base_orientation_tracking.params["asset_cfg"].body_names = [self.base_link_name]
         self.rewards.joint_torques_l2.weight = -3e-4 #-3e-4
         self.rewards.joint_torques_l2.params["asset_cfg"].joint_names = self.joint_names
-        self.rewards.joint_torques_above_threshold.weight = -0.0025
+        self.rewards.joint_torques_above_threshold.weight = -1.0
         self.rewards.joint_torques_above_threshold.params["asset_cfg"].joint_names = self.joint_names
         self.rewards.joint_torques_above_threshold.params["threshold_ratio"] = 0.7
         # Joint-velocity penalty, split by command magnitude. Environments whose
@@ -192,7 +192,7 @@ class BuaaQ1FlatEnvCfg(LocomotionVelocityRoughEnvCfg):
         self.rewards.feet_height.weight = -1.0
         self.rewards.feet_height.params["asset_cfg"].body_names = [self.foot_link_name]
         self.rewards.feet_height.params["sensor_cfg"].body_names = [self.foot_link_name]
-        self.rewards.feet_height.params["target_height"] = 0.7
+        self.rewards.feet_height.params["target_height"] = 0.06
         self.rewards.feet_slide.weight = -0.2
         self.rewards.feet_slide.params["sensor_cfg"].body_names = [self.foot_link_name]
         self.rewards.feet_slide.params["asset_cfg"].body_names = [self.foot_link_name]

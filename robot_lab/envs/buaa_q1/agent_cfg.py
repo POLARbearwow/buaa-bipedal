@@ -11,7 +11,7 @@ class BuaaQ1FlatPPORunnerCfg(Q1FlatPPORunnerCfg):
     """Same PPO settings as Q1, with an independent experiment directory."""
 
     experiment_name = "buaa_q1_flat"
-    clip_actions = 100.0
+    clip_actions = 5.0
 
 
 @configclass
@@ -20,5 +20,5 @@ class BuaaQ1FlatAMPRunnerCfg(Q1FlatAMPRunnerCfg):
 
     experiment_name = "buaa_q1_flat_amp"
     max_iterations = 8000
-    clip_actions = 100.0
+    clip_actions = 5.0
     amp_motion_files = ["datasets/motion_amp_expert/0007_walking001_q1_amp.json"]

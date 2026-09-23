@@ -445,6 +445,14 @@ class RewardsCfg:
     joint_torques_l2 = RewTerm(
         func=mdp.joint_torques_l2, weight=0.0, params={"asset_cfg": SceneEntityCfg("robot", joint_names=".*")}
     )
+    
+    # def joint_torques_l2(env, asset_cfg):
+    #   asset = env.scene[asset_cfg.name]
+    #   return torch.sum(
+    #       torch.square(asset.data.applied_torque[:, asset_cfg.joint_ids]),
+    #       dim=1,
+    #   )
+
     joint_torques_above_threshold = RewTerm(
         func=mdp.joint_torques_above_threshold,
         weight=0.0,
