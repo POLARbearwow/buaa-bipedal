@@ -17,28 +17,21 @@ which was finally clipped by the actuator effort limit (`20 N*m`).
 
 ### Current configuration
 
-`buaa-q1-flat` uses `JointPositionToLimitsActionCfg` with
-`rescale_to_limits=True`:
+`buaa-q1-flat` follows TienKung-Lab's action semantics:
 
 ```text
-normalized_action = clamp(policy_action, -1, 1)
-target = lower_soft_limit
-       + (normalized_action + 1) / 2
-       * (upper_soft_limit - lower_soft_limit)
+clipped_action = clamp(policy_action, -100, 100)
+target = default_joint_pos + clipped_action * 0.25 rad
 ```
 
-The policy output itself is still not guaranteed to be in `[-1, 1]`. A raw
-output of `8` is displayed as `8`, but the action term uses `1` for target
-generation. The final target is inside the per-joint soft limits.
+The policy output is not normalized to `[-1, 1]`, and the target is not
+remapped or clamped to the soft joint limits. The RSL-RL environment wrapper
+clips raw actions to `[-100, 100]` before the action term applies scale and
+offset, matching TienKung-Lab; this is not the joint-position limit.
 
-With `soft_joint_pos_limit_factor = 0.90`:
-
-```text
-policy output = -1 -> lower soft limit
-policy output =  0 -> soft-limit midpoint
-policy output = +1 -> upper soft limit
-policy output =  8 -> treated as +1
-```
+Joint-limit rewards and actuator dynamics must therefore discourage unsafe
+targets. Check `Action/target_near_limit_fraction` and
+`Action/target_limit_margin_mean` during training.
 
 The new action order is the articulation order:
 
@@ -55,20 +48,22 @@ not compatible with the new action mapping.
 
 ## MuJoCo mapping
 
-`mujoco/deploy_mujoco_buaa_q1.py` applies the same soft-limit mapping using
-the MJCF hard ranges and factor `0.90`, then computes PD torque:
+`mujoco/deploy_mujoco_buaa_q1.py` applies the same clipped, scaled default-pose
+offset as training, then computes PD torque:
 
 ```text
+target = default_joint_pos + clip(policy_action, -100, 100) * 0.25
 computed_torque = kp * (target - qpos) - kd * qvel
 applied_torque = clip(computed_torque, -20, 20)
 ```
 
-The matching MuJoCo configuration is:
+The matching MuJoCo configuration sets the same action scale and safety clip:
 
 ```yaml
 obs_order: articulation
 action_order: articulation
-soft_joint_pos_limit_factor: 0.90
+action_scale: 0.25
+clip_actions: 100.0
 ```
 
 If `/dev/input/js0` is absent, the command remains `(vx, vy, wz) = (0, 0, 0)`.

@@ -95,10 +95,8 @@ class DeployBuaaQ1:
         self.kd = remap(cfg["kd"], self.CONFIGURED_JOINTS, self.ACTION_JOINTS)
         self.torque_limits = remap(cfg["torque_limits"], self.CONFIGURED_JOINTS, self.ACTION_JOINTS)
         self.obs_default_angles = remap(cfg["obs_default_angles"], self.ARTICULATION_JOINTS, self.OBS_JOINTS)
-        # JointPositionToLimitsActionCfg semantics: normalized actions are
-        # mapped to the articulation's soft joint limits, not added to the
-        # default pose with a fixed radian scale.
-        self.soft_joint_pos_limit_factor = float(cfg.get("soft_joint_pos_limit_factor", 0.90))
+        self.action_scale = float(cfg.get("action_scale", 0.25))
+        self.clip_actions = float(cfg.get("clip_actions", 100.0))
         self.joint_vel_scale = float(cfg["joint_vel_scale"])
         self.ang_vel_scale = float(cfg["ang_vel_scale"])
         self.gait_cycle_time = float(cfg.get("gait_cycle_time", 0.667))
@@ -120,16 +118,6 @@ class DeployBuaaQ1:
         self.actuator_ids = [mujoco.mj_name2id(self.model, mujoco.mjtObj.mjOBJ_ACTUATOR, f"{n}_motor") for n in self.ACTION_JOINTS]
         if any(x < 0 for x in self.action_qpos_ids + self.action_qvel_ids + self.obs_qpos_ids + self.obs_qvel_ids + self.actuator_ids):
             raise RuntimeError("MJCF is missing one or more BUAA Q1 joints/actuators")
-        action_joint_ids = [
-            mujoco.mj_name2id(self.model, mujoco.mjtObj.mjOBJ_JOINT, n) for n in self.ACTION_JOINTS
-        ]
-        hard_limits = np.asarray(self.model.jnt_range[action_joint_ids], dtype=np.float32)
-        limit_center = hard_limits.mean(axis=1)
-        limit_half_range = 0.5 * (hard_limits[:, 1] - hard_limits[:, 0])
-        self.soft_joint_limits = np.column_stack(
-            (limit_center - self.soft_joint_pos_limit_factor * limit_half_range,
-             limit_center + self.soft_joint_pos_limit_factor * limit_half_range)
-        )
         self.joystick = JoystickInterface(cfg["joystick_device"], float(cfg["joystick_max_v_x"]), float(cfg["joystick_max_v_y"]), float(cfg["joystick_max_omega"]))
         self.control_decimation = int(cfg["control_decimation"])
         self.debug_log = bool(cfg.get("debug_log", False))
@@ -223,10 +211,8 @@ class DeployBuaaQ1:
         self.last_action[: min(10, action.size)] = action[:10]
 
     def _apply_pd(self) -> None:
-        normalized_action = np.clip(self.last_action, -1.0, 1.0)
-        target = self.soft_joint_limits[:, 0] + 0.5 * (normalized_action + 1.0) * (
-            self.soft_joint_limits[:, 1] - self.soft_joint_limits[:, 0]
-        )
+        clipped_action = np.clip(self.last_action, -self.clip_actions, self.clip_actions)
+        target = self.default_angles + clipped_action * self.action_scale
         torque = self.kp * (target - self.qpos) - self.kd * self.qvel
         self.last_target[:] = target
         self.last_computed_torque[:] = torque
@@ -240,10 +226,11 @@ class DeployBuaaQ1:
         applied = np.asarray(self.data.actuator_force[self.actuator_ids], dtype=np.float32)
         ctrl = np.asarray(self.data.ctrl[self.actuator_ids], dtype=np.float32)
         print(f"\n[DEBUG] control_step={self.control_count} command={self.cmd.tolist()}")
-        print("joint                    action(raw)  action(clamped)  target(rad)  qpos(rad)  computed(Nm)  ctrl(Nm)  applied(Nm)")
+        print("joint                    action(raw)  action(clipped)  target(rad)  qpos(rad)  computed(Nm)  ctrl(Nm)  applied(Nm)")
         for i, name in enumerate(self.ACTION_JOINTS):
             print(
-                f"{name:24s} {self.last_action[i]:11.5f} {np.clip(self.last_action[i], -1, 1):15.5f} "
+                f"{name:24s} {self.last_action[i]:11.5f} "
+                f"{np.clip(self.last_action[i], -self.clip_actions, self.clip_actions):15.5f} "
                 f"{self.last_target[i]:11.5f} {self.qpos[i]:10.5f} {self.last_computed_torque[i]:13.5f} "
                 f"{ctrl[i]:9.5f} {applied[i]:11.5f}"
             )

@@ -41,6 +41,6 @@ changing that URDF with:
 
 ```bash
 python mujoco/convert_urdf_to_mjcf.py \
-  source/robot_lab/robot_lab/assets/data/buaa-q1-v1/q1/urdf/q1.urdf \
-  source/robot_lab/robot_lab/assets/data/buaa-q1-v1/q1/mjcf/scene.xml
+  robot_lab/assets/data/buaa-q1-v1/q1/urdf/q1.urdf \
+  robot_lab/assets/data/buaa-q1-v1/q1/mjcf/scene.xml
 ```

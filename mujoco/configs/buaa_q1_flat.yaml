@@ -4,24 +4,25 @@ simulation_duration: 600000000.0
 simulation_dt: 0.001
 control_decimation: 15
 
-# The bounded JointPositionToLimitsActionCfg resolves joints in articulation order.
+# Joint actions use articulation order and default-pose offsets, matching training.
 # Command-line flags --obs-order/--action-order override these values.
 obs_order: articulation
 action_order: articulation
 
 # The generated MJCF lives next to the BUAA Q1 meshes so its relative meshdir works.
-xml_path: "{PROJECT_ROOT}/source/robot_lab/robot_lab/assets/data/buaa-q1-v1/q1/mjcf/scene.xml"
+xml_path: "{PROJECT_ROOT}/robot_lab/assets/data/buaa-q1-v1/q1/mjcf/scene.xml"
 policy_path: "{PROJECT_ROOT}/logs/rsl_rl/buaa_q1_flat/2026-09-09_18-53-12/exported/policy.onnx"
 
 # These vectors remain in the legacy configured order and are remapped by the
-# deployment code; action targets now come from MuJoCo joint limits.
+# deployment code.
 default_angles: [-0.36, 0.18, 2.35, -0.33, -0.77, 0.36, -0.18, -2.35, 0.33, 0.77]
 kp: [55.0, 105.0, 75.0, 45.0, 30.0, 55.0, 105.0, 75.0, 45.0, 30.0]
 kd: [0.3, 2.5, 0.3, 0.5, 0.25, 0.3, 2.5, 0.3, 0.5, 0.25]
 torque_limits: [20.0, 20.0, 20.0, 20.0, 20.0, 20.0, 20.0, 20.0, 20.0, 20.0]
 # Observation order follows robot.data.joint_names printed by scripts/play.py.
 obs_default_angles: [-0.36, 0.36, 0.18, -0.18, 2.35, -2.35, -0.33, 0.33, -0.77, 0.77]
-soft_joint_pos_limit_factor: 0.90
+action_scale: 0.25
+clip_actions: 100.0
 ang_vel_scale: 0.25
 joint_vel_scale: 0.05
 gait_cycle_time: 0.667

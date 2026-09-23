@@ -11,6 +11,8 @@ from pathlib import Path
 
 from isaaclab.app import AppLauncher
 
+import local_assets  # isort: skip
+
 
 parser = argparse.ArgumentParser(description="Load Q1 at its default pose in Isaac Sim.")
 parser.add_argument(
@@ -21,6 +23,10 @@ parser.add_argument(
 )
 AppLauncher.add_app_launcher_args(parser)
 args_cli = parser.parse_args()
+
+# use a local mirror of the NVIDIA assets so that startup does not stall on
+# the (often slow or unreachable) asset CDN
+args_cli.kit_args = local_assets.use_local_assets(args_cli.kit_args)
 
 app_launcher = AppLauncher(args_cli)
 simulation_app = app_launcher.app
@@ -34,7 +40,7 @@ from isaaclab.sim import SimulationContext
 
 # Allow the script to run before or after an editable package installation.
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
-PACKAGE_ROOT = PROJECT_ROOT / "source" / "robot_lab"
+PACKAGE_ROOT = PROJECT_ROOT
 if str(PACKAGE_ROOT) not in sys.path:
     sys.path.insert(0, str(PACKAGE_ROOT))
 

@@ -11,12 +11,17 @@
 """Launch Isaac Sim Simulator first."""
 
 import argparse
+from pathlib import Path
 import sys
+
+# Prefer the vendored RSL-RL implementation, which contains AMP support.
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from isaaclab.app import AppLauncher
 
 # local imports
 import cli_args  # isort: skip
+import local_assets  # isort: skip
 
 # add argparse arguments
 parser = argparse.ArgumentParser(description="Train an RL agent with RSL-RL.")
@@ -51,6 +56,10 @@ if args_cli.video:
 # clear out sys.argv for Hydra
 sys.argv = [sys.argv[0]] + hydra_args
 
+# use a local mirror of the NVIDIA assets so that startup does not stall on
+# the (often slow or unreachable) asset CDN
+args_cli.kit_args = local_assets.use_local_assets(args_cli.kit_args)
+
 # launch omniverse app
 app_launcher = AppLauncher(args_cli)
 simulation_app = app_launcher.app
@@ -70,7 +79,7 @@ import time
 
 import gymnasium as gym
 import torch
-from rsl_rl.runners import OnPolicyRunner
+from rsl_rl.runners import AmpOnPolicyRunner, OnPolicyRunner
 
 from isaaclab.devices import Se2Keyboard, Se2KeyboardCfg
 from isaaclab.envs import (
@@ -85,12 +94,13 @@ from isaaclab.utils.assets import retrieve_file_path
 from isaaclab.utils.dict import print_dict
 
 from isaaclab_rl.rsl_rl import RslRlOnPolicyRunnerCfg, RslRlVecEnvWrapper, export_policy_as_jit, export_policy_as_onnx
+from robot_lab.rl import Q1AmpVecEnvWrapper
 from isaaclab.utils.pretrained_checkpoint import get_published_pretrained_checkpoint
 
 from isaaclab_tasks.utils import get_checkpoint_path
 from isaaclab_tasks.utils.hydra import hydra_task_config
 
-import robot_lab.tasks  # noqa: F401  # isort: skip
+import robot_lab.envs  # noqa: F401  # isort: skip
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from rl_utils import camera_follow
@@ -198,12 +208,19 @@ def main(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg | DirectMARLEnvCfg, agen
         print_dict(video_kwargs, nesting=4)
         env = gym.wrappers.RecordVideo(env, **video_kwargs)
 
-    # wrap around environment for rsl-rl
-    env = RslRlVecEnvWrapper(env, clip_actions=agent_cfg.clip_actions)
+    # AMP checkpoints require the AMP runner and wrapper during construction;
+    # the policy itself is still used normally during inference.
+    is_amp = getattr(agent_cfg, "runner_class_name", "OnPolicyRunner") == "AmpOnPolicyRunner"
+    if is_amp:
+        env = Q1AmpVecEnvWrapper(env, clip_actions=agent_cfg.clip_actions)
+        runner_class = AmpOnPolicyRunner
+    else:
+        env = RslRlVecEnvWrapper(env, clip_actions=agent_cfg.clip_actions)
+        runner_class = OnPolicyRunner
 
     print(f"[INFO]: Loading model checkpoint from: {resume_path}")
     # load previously trained model
-    runner = OnPolicyRunner(env, agent_cfg.to_dict(), log_dir=None, device=agent_cfg.device)
+    runner = runner_class(env, agent_cfg.to_dict(), log_dir=None, device=agent_cfg.device)
     runner.load(resume_path)
 
     # obtain the trained policy for inference

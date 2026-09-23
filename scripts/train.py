@@ -11,12 +11,18 @@
 """Launch Isaac Sim Simulator first."""
 
 import argparse
+import os
 import sys
+from pathlib import Path
+
+# The vendored RSL-RL must win over an older site-package installation.
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from isaaclab.app import AppLauncher
 
 # local imports
 import cli_args  # isort: skip
+import local_assets  # isort: skip
 
 # add argparse arguments
 parser = argparse.ArgumentParser(description="Train an RL agent with RSL-RL.")
@@ -50,6 +56,10 @@ if args_cli.video:
 # clear out sys.argv for Hydra
 sys.argv = [sys.argv[0]] + hydra_args
 
+# use a local mirror of the NVIDIA assets so that startup does not stall on
+# the (often slow or unreachable) asset CDN
+args_cli.kit_args = local_assets.use_local_assets(args_cli.kit_args)
+
 # launch omniverse app
 app_launcher = AppLauncher(args_cli)
 simulation_app = app_launcher.app
@@ -62,7 +72,7 @@ import platform
 from packaging import version
 
 # check minimum supported rsl-rl version
-RSL_RL_VERSION = "2.3.3"
+RSL_RL_VERSION = "2.3.1"
 installed_version = metadata.version("rsl-rl-lib")
 if version.parse(installed_version) < version.parse(RSL_RL_VERSION):
     if platform.system() == "Windows":
@@ -79,13 +89,12 @@ if version.parse(installed_version) < version.parse(RSL_RL_VERSION):
 """Rest everything follows."""
 
 import logging
-import os
 import time
 from datetime import datetime
 
 import gymnasium as gym
 import torch
-from rsl_rl.runners import OnPolicyRunner
+from rsl_rl.runners import AmpOnPolicyRunner, OnPolicyRunner
 
 from isaaclab.envs import (
     DirectMARLEnv,
@@ -98,11 +107,12 @@ from isaaclab.utils.dict import print_dict
 from isaaclab.utils.io import dump_yaml
 
 from isaaclab_rl.rsl_rl import RslRlOnPolicyRunnerCfg, RslRlVecEnvWrapper
+from robot_lab.rl import Q1AmpVecEnvWrapper
 
 from isaaclab_tasks.utils import get_checkpoint_path
 from isaaclab_tasks.utils.hydra import hydra_task_config
 
-import robot_lab.tasks  # noqa: F401  # isort: skip
+import robot_lab.envs  # noqa: F401  # isort: skip
 
 # import logger
 logger = logging.getLogger(__name__)
@@ -196,10 +206,17 @@ def main(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg | DirectMARLEnvCfg, agen
     start_time = time.time()
 
     # wrap around environment for rsl-rl
-    env = RslRlVecEnvWrapper(env, clip_actions=agent_cfg.clip_actions)
+    if getattr(agent_cfg, "runner_class_name", "OnPolicyRunner") == "AmpOnPolicyRunner":
+        if not agent_cfg.amp_motion_files:
+            raise ValueError("AMP is selected but amp_motion_files is empty. Add validated Q1 JSON motion files.")
+        env = Q1AmpVecEnvWrapper(env, clip_actions=agent_cfg.clip_actions)
+        runner_class = AmpOnPolicyRunner
+    else:
+        env = RslRlVecEnvWrapper(env, clip_actions=agent_cfg.clip_actions)
+        runner_class = OnPolicyRunner
 
     # create runner from rsl-rl
-    runner = OnPolicyRunner(env, agent_cfg.to_dict(), log_dir=log_dir, device=agent_cfg.device)
+    runner = runner_class(env, agent_cfg.to_dict(), log_dir=log_dir, device=agent_cfg.device)
     # write git state to logs
     runner.add_git_repo_to_log(__file__)
     # load the checkpoint
