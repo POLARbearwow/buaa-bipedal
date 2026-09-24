@@ -120,12 +120,12 @@ class BuaaQ1FlatEnvCfg(LocomotionVelocityRoughEnvCfg):
         #     "yaw": (-0.2, 0.2),
         # }
         self.events.randomize_reset_base.params["velocity_range"] = {
-            "x": (-0.0, 0.0),
-            "y": (-0.0, 0.0),
-            "z": (-0.0, 0.0),
-            "roll": (-0.0, 0.0),
-            "pitch": (-0.0, 0.0),
-            "yaw": (-0.0, 0.0),
+            "x": (-0.2, 0.2),
+            "y": (-0.1, 0.1),
+            "z": (-0.1, 0.1),
+            "roll": (-0.1, 0.1),
+            "pitch": (-0.1, 0.1),
+            "yaw": (-0.1, 0.1),
         }
 
         self.rewards.is_terminated.weight = -200.0
@@ -133,7 +133,7 @@ class BuaaQ1FlatEnvCfg(LocomotionVelocityRoughEnvCfg):
         self.rewards.stand_still.weight = -2.0
         # Penalize vertical base motion (body-frame z velocity) to discourage
         # bouncing while preserving the commanded horizontal velocity task.
-        self.rewards.lin_vel_z_l2.weight = -1.5
+        self.rewards.lin_vel_z_l2.weight = -2.0
         self.rewards.ang_vel_xy_l2.weight = -0.3
         self.rewards.flat_orientation_l2.weight = -0.5
         self.rewards.base_height_l2.params["asset_cfg"].body_names = [self.base_link_name]
@@ -144,14 +144,14 @@ class BuaaQ1FlatEnvCfg(LocomotionVelocityRoughEnvCfg):
         self.rewards.base_orientation_tracking.params["asset_cfg"].body_names = [self.base_link_name]
         self.rewards.joint_torques_l2.weight = -3e-4 #-3e-4
         self.rewards.joint_torques_l2.params["asset_cfg"].joint_names = self.joint_names
-        self.rewards.joint_torques_above_threshold.weight = -1.0
+        self.rewards.joint_torques_above_threshold.weight = -0.5
         self.rewards.joint_torques_above_threshold.params["asset_cfg"].joint_names = self.joint_names
-        self.rewards.joint_torques_above_threshold.params["threshold_ratio"] = 0.7
+        self.rewards.joint_torques_above_threshold.params["threshold_ratio"] = 0.6
         # Joint-velocity penalty, split by command magnitude. Environments whose
         # command norm is <= ``stand_command_threshold`` are treated as "standing"
         # and get their own weight, separate from the moving environments.
         # self.rewards.joint_vel_l2.weight = -0.0
-        self.rewards.joint_vel_l2_stand.weight = -0.05
+        self.rewards.joint_vel_l2_stand.weight = -0.1
         self.rewards.joint_vel_l2_stand.params["asset_cfg"].joint_names = self.joint_names
         self.rewards.joint_vel_l2_moving.weight = -1e-4
         self.rewards.joint_vel_l2_moving.params["asset_cfg"].joint_names = self.joint_names
@@ -173,7 +173,7 @@ class BuaaQ1FlatEnvCfg(LocomotionVelocityRoughEnvCfg):
         # Gait rewards (tune this block together).
         # self.rewards.feet_air_time.weight = 1.0  # legacy reward disabled
         self.rewards.phase_conditioned_contact.weight = 1.0
-        self.rewards.phase_conditioned_contact.params["cycle_time"] = 0.667
+        self.rewards.phase_conditioned_contact.params["cycle_time"] = 0.5
         self.rewards.phase_conditioned_contact.params.pop("air_ratio", None)
         self.rewards.phase_conditioned_contact.params.pop("phase_offset_l", None)
         self.rewards.phase_conditioned_contact.params.pop("phase_offset_r", None)
@@ -202,7 +202,7 @@ class BuaaQ1FlatEnvCfg(LocomotionVelocityRoughEnvCfg):
         self.rewards.upward.weight = 0.2
         self.terminations.illegal_contact.params["sensor_cfg"].body_names = [self.base_link_name]
         self.commands.base_velocity.heading_command = False
-        self.commands.base_velocity.ranges.lin_vel_x = (-0.4, 0.7)
+        self.commands.base_velocity.ranges.lin_vel_x = (-0.7, 0.7)
         self.commands.base_velocity.ranges.lin_vel_y = (0.0, 0.0)
         self.commands.base_velocity.ranges.ang_vel_z = (-0.3, 0.3)
 
